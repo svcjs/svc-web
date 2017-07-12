@@ -1,0 +1,39 @@
+{
+  "name": "svc-web",
+  "version": "0.0.1",
+  "description": "a web freamwork",
+  "main": "dist/svc-web.cjs.js",
+  "module": "dist/svc-web.es.js",
+  "jsnext:main": "dist/svc-web.es.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svcjs/svc-web.git"
+  },
+  "author": {
+    "name": "Star",
+    "email": "star3s@126.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/svcjs/svc-web/issues"
+  },
+  "homepage": "https://github.com/svcjs/svc-web#readme",
+  "scripts": {
+    "lint": "standard --fix rollup.config.js test/** src/**",
+    "build": "rm -rf dist && rollup -c && uglifyjs ./dist/svc-web.js -o ./dist/svc-web.min.js -c warnings=false -m"
+  },
+  "devDependencies": {
+    "babel-eslint": "^7.2.3",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-es2015": "^6.18.0",
+    "babel-preset-stage-0": "^6.24.1",
+    "rollup": "^0.41.4",
+    "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-commonjs": "^7.0.0",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "standard": "^10.0.2",
+    "svc-route": "0.0.3",
+    "uglify-js": "^3.0.11",
+    "watch-cli": "^0.2.1"
+  }
+}
