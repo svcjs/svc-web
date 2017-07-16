@@ -53,7 +53,7 @@ function _refreshView () {
     if (!this._refreshViewTID) {
       setTimeout(function () {
         try {
-          tpl.make(this.$(), {data: this.data, state: this.route.states.state})
+          tpl.make(this.$(), {data: this.data})
           for (let callbacks of this._refreshViewCallbacks) {
             callbacks[0]()
           }
@@ -79,14 +79,17 @@ export default class extends Route {
   }
 
   bindHash () {
-    this.bind('*', this.makeRoute.bind(this))
+    let that = this
+    this.bind('*', (paths) => {
+      location.hash = '#' + this.routeUrl
+      that.makeRoute(paths)
+    })
     window.addEventListener('hashchange', () => {
       this.go(location.hash.substr(1))
     })
   }
 
   makeRoute (paths) {
-    location.hash = '#' + this.routeUrl
     // 预处理
     let parentView = this.Root
     let availablePaths = []
