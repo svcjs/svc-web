@@ -63,7 +63,9 @@ export default class {
         let vars = {}
         if (node.attributes) {
           // 待处理列表
-          for (let attr of node.attributes) {
+          // for (let attr of node.attributes) {
+          for (let i in node.attributes) {
+            let attr = node.attributes[i]
             if (attr.value && attr.value.indexOf('{') !== -1 && attr.value.indexOf('}') !== -1) {
               if (attr.name === 'class') {
                 vars['className'] = attr.value
