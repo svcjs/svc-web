@@ -1,6 +1,10 @@
 import { Route } from 'svc-route'
 import Tpl from './webtpl'
 
+/*
+global location
+ */
+
 let tpl = new Tpl()
 
 function _$ (selector) {
@@ -53,7 +57,9 @@ function _refreshView () {
     if (!this._refreshViewTID) {
       setTimeout(function () {
         try {
-          tpl.make(this.$(), {data: this.data})
+          let datas = this.datas || {}
+          datas.data = this.data
+          tpl.make(this.$(), datas)
           for (let callbacks of this._refreshViewCallbacks) {
             callbacks[0]()
           }

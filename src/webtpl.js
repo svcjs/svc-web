@@ -25,9 +25,24 @@ function _makeString (str, datas) {
 }
 
 export default class {
-  make (parentNode, datas) {
+  refresh (node, datas) {
+    // 仅处理属性
+    if (node.vars) {
+      for (let key in node.vars) {
+        let newValue = _makeString(node.vars[key], datas)
+        if (key === 'className' || key === 'data') {
+          node[key] = newValue
+        } else {
+          node.setAttribute(key, newValue)
+        }
+      }
+    }
+    this.make(node, datas)
+  }
+
+  make (targetNode, datas) {
     let nodes = []
-    for (let node of parentNode.childNodes) {
+    for (let node of targetNode.childNodes) {
       nodes.push(node)
     }
     for (let node of nodes) {
@@ -96,7 +111,19 @@ export default class {
             case 'INPUT':
             case 'TEXTAREA':
               node.addEventListener('change', (e) => {
-                _setVarsValue(e.target.binds, e.target.value, datas)
+                let v = null
+                if (node.type === 'checkbox') {
+                  v = e.target.getAttribute('checked') === null ? 'true' : 'false'
+                } else if (node.type === 'radio') {
+                  if (e.target.checked !== null) {
+                    v = e.target.value
+                  }
+                } else {
+                  v = e.target.value
+                }
+                if (v !== null) {
+                  _setVarsValue(e.target.binds, v, node.bindDatas)
+                }
               })
               break
           }
@@ -120,12 +147,28 @@ export default class {
         switch (node.tagName) {
           case 'INPUT':
           case 'TEXTAREA':
+            node.bindDatas = datas
             let data = datas
             for (let k of node.binds) {
               data = data[k]
               if (!data) break
             }
-            node.value = data
+            if (node.type === 'checkbox') {
+              if (data === 'true' || data === '1') {
+                node.setAttribute('checked', '')
+              } else {
+                node.removeAttribute('checked')
+              }
+            }
+            if (node.type === 'radio') {
+              if (data === node.value) {
+                node.checked = true
+              } else {
+                node.checked = false
+              }
+            } else {
+              node.value = data || ''
+            }
         }
       }
 

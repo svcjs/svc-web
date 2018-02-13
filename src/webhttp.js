@@ -1,3 +1,7 @@
+/*
+global XMLHttpRequest
+ */
+
 export default class {
   constructor (url) {
     this.baseUrl = url
@@ -5,12 +9,32 @@ export default class {
     this.transmitHeaders = []
   }
 
+  get (url) {
+    return this.do('GET', url)
+  }
+
   post (url, data) {
+    return this.do('POST', url, data)
+  }
+
+  put (url, data) {
+    return this.do('PUT', url, data)
+  }
+
+  delete (url, data) {
+    return this.do('DELETE', url, data)
+  }
+
+  head (url, data) {
+    return this.do('HEAD', url, data)
+  }
+
+  do (method, url, data) {
     url = this.baseUrl + (url.charAt(0) === '/' ? '' : '/') + url
     let that = this
     return new Promise(function (resolve, reject) {
       var xhr = new XMLHttpRequest()
-      xhr.open('POST', url, true)
+      xhr.open(method, url, true)
       xhr.setRequestHeader('Content-Type', 'application/json')
       for (let key in that.upHeaders) {
         xhr.setRequestHeader(key, that.upHeaders[key])
@@ -24,17 +48,27 @@ export default class {
               that.upHeaders[key] = value
             }
           }
-          resolve(JSON.parse(this.responseText))
+          let data
+          try {
+            data = JSON.parse(this.responseText)
+          } catch (e) {
+            data = this.responseText
+          }
+          resolve(data, this)
         } else {
-          resolve({code: this.status, message: this.statusText})
+          resolve(null, this)
         }
       }
       xhr.onerror = function (err) {
         reject(err)
       }
 
-      if (!data) data = {}
-      xhr.send(JSON.stringify(data))
+      if (data) {
+        try {
+          data = JSON.stringify(data)
+        } catch (e) {}
+      }
+      xhr.send(data)
     })
   }
 }
