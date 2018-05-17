@@ -1,5 +1,6 @@
 /*
 global XMLHttpRequest
+global location
  */
 
 export default class {
@@ -30,7 +31,7 @@ export default class {
   }
 
   do (method, url, data) {
-    url = this.baseUrl + (url.charAt(0) === '/' ? '' : '/') + url
+    url = this.baseUrl + (url.charAt(0) === '/' ? '' : location.pathname) + url
     let that = this
     return new Promise(function (resolve, reject) {
       var xhr = new XMLHttpRequest()

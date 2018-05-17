@@ -7,14 +7,38 @@ function _setVarsValue (vars, value, datas) {
   data[vars[vars.length - 1]] = value
 }
 
+// function _makeString (str, datas) {
+//   let defines = ''
+//   for (let key in datas) {
+//     defines += 'let ' + key + ' = datas["' + key + '"];'
+//   }
+//   str = str.replace(/\{(.+?)\}/g, function (full, part1) {
+//     try {
+//       let result = eval(defines + 'eval(part1)')
+//       if (result === undefined || result === null) return ''
+//       return result
+//     } catch (err) {
+//       return full
+//     }
+//   })
+//   return str
+// }
+
 function _makeString (str, datas) {
-  let defines = ''
+  let args = []
+  let values = []
   for (let key in datas) {
-    defines += 'let ' + key + ' = datas["' + key + '"];'
+    args.push(key)
+    values.push(datas[key])
   }
+  let lastArgsIndex = args.length
+  args.push('return null')
+
   str = str.replace(/\{(.+?)\}/g, function (full, part1) {
     try {
-      let result = eval(defines + 'eval(part1)')
+      args[lastArgsIndex] = 'return ' + part1
+      let func = Function.constructor.apply(null, args)
+      let result = func.apply(null, values)
       if (result === undefined || result === null) return ''
       return result
     } catch (err) {
@@ -102,34 +126,6 @@ export default class {
         }
       }
 
-      // 初始化数据绑定 bind
-      if (node.binds === undefined) {
-        node.binds = false
-        if (node.attributes && node.attributes.bind) {
-          node.binds = node.attributes.bind.value.split('.')
-          switch (node.tagName) {
-            case 'INPUT':
-            case 'TEXTAREA':
-              node.addEventListener('change', (e) => {
-                let v = null
-                if (node.type === 'checkbox') {
-                  v = e.target.getAttribute('checked') === null ? 'true' : 'false'
-                } else if (node.type === 'radio') {
-                  if (e.target.checked !== null) {
-                    v = e.target.value
-                  }
-                } else {
-                  v = e.target.value
-                }
-                if (v !== null) {
-                  _setVarsValue(e.target.binds, v, node.bindDatas)
-                }
-              })
-              break
-          }
-        }
-      }
-
       // 处理属性
       if (node.vars) {
         for (let key in node.vars) {
@@ -142,19 +138,55 @@ export default class {
         }
       }
 
+      // 初始化数据绑定 bind
+      if (node.binds === undefined) {
+        node.binds = false
+        if (node.attributes && node.attributes.bind) {
+          node.binds = node.attributes.bind.value.split('.')
+          switch (node.tagName) {
+            case 'INPUT':
+            case 'TEXTAREA':
+              node.addEventListener('change', (e) => {
+                let v = null
+                if (node.type === 'checkbox') {
+                  v = e.target.getAttribute('checked') === null
+                } else if (node.type === 'radio') {
+                  if (e.target.checked !== null) {
+                    v = e.target.value
+                  }
+                } else {
+                  v = e.target.value
+                }
+                if (v !== null) {
+                  _setVarsValue(e.target.binds, v, node.bindDatas)
+                  let onbind = e.target.getAttribute('onbind')
+                  if (onbind) {
+                    let func = Function.constructor.apply(null, [onbind])
+                    func(e)
+                  }
+                }
+              })
+              break
+          }
+        }
+      }
+
       // 处理属性
       if (node.binds) {
+        node.bindDatas = {}
+        for (let k in datas) {
+          node.bindDatas[k] = datas[k]
+        }
         switch (node.tagName) {
           case 'INPUT':
           case 'TEXTAREA':
-            node.bindDatas = datas
             let data = datas
             for (let k of node.binds) {
               data = data[k]
               if (!data) break
             }
             if (node.type === 'checkbox') {
-              if (data === 'true' || data === '1') {
+              if (data === true || data === 'true' || data === 1) {
                 node.setAttribute('checked', '')
               } else {
                 node.removeAttribute('checked')

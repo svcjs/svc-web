@@ -1,6 +1,6 @@
 {
   "name": "svc-web",
-  "version": "0.1.4",
+  "version": "0.1.9",
   "description": "a web freamwork",
   "main": "dist/svc-web.cjs.js",
   "module": "dist/svc-web.es.js",

@@ -3,6 +3,7 @@ import Tpl from './webtpl'
 
 /*
 global location
+global XMLHttpRequest
  */
 
 let tpl = new Tpl()
@@ -87,8 +88,11 @@ export default class extends Route {
   bindHash () {
     let that = this
     this.bind('*', (paths) => {
-      location.hash = '#' + this.routeUrl
-      that.makeRoute(paths)
+      if (that.makeRoute(paths)) {
+        location.hash = '#' + this.routeUrl
+      }else{
+        this.go(-1)
+      }
     })
     window.addEventListener('hashchange', () => {
       this.go(location.hash.substr(1))
@@ -111,6 +115,12 @@ export default class extends Route {
         // 生成dom节点
         view.dom = document.createElement('div')
         if (view.html) {
+          if (/\.html\s*$/.test(view.html)) {
+            let xhr = new XMLHttpRequest()
+            xhr.open('GET', view.html, false)
+            xhr.send()
+            view.html = xhr.responseText
+          }
           view.dom.innerHTML = view.html.replace(/\$this/g, 'window._cachedViews[\'' + path.pathName + '\']').replace('id="SUBVIEW"', 'id="SUBVIEW_' + path.pathName + '"')
         }
         window._cachedViews[path.pathName] = view
@@ -131,6 +141,17 @@ export default class extends Route {
       parentView = view
       if (prevPath && prevPath.url === path.url && samePos === i - 1) {
         samePos = i
+      }
+    }
+
+    // 旧路由中不一样的部分调用 canHide，确认允许跳转
+    for (let i = this._prevPaths.length - 1; i > samePos; i--) {
+      let path = i === -1 ? {pathName: 'ROOT'} : this._prevPaths[i]
+      let view = i === -1 ? this.Root : window._cachedViews[path.pathName]
+      if (view.canHide) {
+        if (!view.canHide(path, paths)) {
+          return false
+        }
       }
     }
 
@@ -213,5 +234,7 @@ export default class extends Route {
     }
 
     this._prevPaths = availablePaths
+
+    return true
   }
 }
