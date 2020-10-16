@@ -1,6 +1,6 @@
 {
   "name": "svc-web",
-  "version": "0.1.9",
+  "version": "0.2.1",
   "description": "a web freamwork",
   "main": "dist/svc-web.cjs.js",
   "module": "dist/svc-web.es.js",
@@ -30,10 +30,10 @@
     "rollup": "^0.41.4",
     "rollup-plugin-babel": "^2.7.1",
     "rollup-plugin-commonjs": "^7.0.0",
-    "rollup-plugin-node-resolve": "^3.0.0",
-    "standard": "^10.0.2",
-    "svc-route": "0.1.1",
-    "uglify-js": "^3.0.11",
-    "watch-cli": "^0.2.1"
+    "rollup-plugin-node-resolve": "^3.3.0",
+    "standard": "^10.0.3",
+    "svc-route": "^0.1.2",
+    "uglify-js": "^3.3.26",
+    "watch-cli": "^0.2.3"
   }
 }

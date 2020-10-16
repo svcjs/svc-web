@@ -90,8 +90,10 @@ export default class extends Route {
     this.bind('*', (paths) => {
       if (that.makeRoute(paths)) {
         location.hash = '#' + this.routeUrl
-      }else{
-        this.go(-1)
+      } else {
+        setTimeout(function () {
+          that.go(-1)
+        })
       }
     })
     window.addEventListener('hashchange', () => {
@@ -162,13 +164,11 @@ export default class extends Route {
       let prevPath = (i === 0 ? {pathName: 'ROOT'} : this._prevPaths[i - 1]) || null
       // let prevView = prevPath ? _cachedViews[prevPath.pathName] : null
       if (view.stateRegisters) {
-        for (let bind of view.stateRegisters) {
-          if (bind instanceof Array && bind.length >= 2) {
-            this.states.unbind(bind[0], bind[1])
-          }
+        for (let bindKey in view.stateRegisters) {
+          this.states.unbind(bindKey, view.stateRegisters[bindKey])
         }
       }
-      if (view.stateRegisters) {
+      if (view.stateBinds) {
         this.states.unbind(view.stateBinds, view)
       }
 
@@ -211,21 +211,30 @@ export default class extends Route {
         if (view.onShow) view.onShow(path, nextPath, nextView)
         // 自动绑定state，并触发一次所有绑定事件
         if (view.stateRegisters) {
-          for (let bind of view.stateRegisters) {
-            if (bind instanceof Array && bind.length >= 2) {
-              this.states.bind(bind[0], bind[1])
-              if (typeof bind[1] === 'function') {
-                bind[1](this.states.get(bind[0]))
-              } else if (typeof bind[1] === 'object' && typeof bind[1].setData === 'function') {
-                bind[1].setData(this.states.get(bind[0]))
+          for (let bindKey in view.stateRegisters) {
+            let bindTarget = view.stateRegisters[bindKey]
+            this.states.bind(bindKey, bindTarget)
+            if (typeof bindTarget === 'function') {
+              bindTarget(this.states.get(bindKey))
+            } else if (bindTarget instanceof Array && bindTarget.length === 2) {
+              if (typeof bindTarget[1] === 'function') {
+                bindTarget[1].apply(bindTarget[0], this.states.get(bindKey))
+              } else if (typeof bindTarget[0][bindTarget[1]] === 'function') {
+                bindTarget[0][bindTarget[1]].apply(bindTarget[0], this.states.get(bindKey))
               }
+            } else if (typeof bindTarget === 'object' && typeof bindTarget.setData === 'function') {
+              bindTarget.setData(this.states.get(bindKey))
             }
           }
         }
         if (view.stateBinds) {
           this.states.bind(view.stateBinds, view)
           for (let bind of view.stateBinds) {
-            view.data[bind] = this.states.state[bind]
+            if (typeof bind === 'string') {
+              view.data[bind] = this.states.state[bind]
+            } else if (bind instanceof Array && bind.length === 2) {
+              view.data[bind[1]] = this.states.state[bind[0]]
+            }
           }
         }
       }
