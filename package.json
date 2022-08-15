@@ -32,7 +32,7 @@
     "rollup-plugin-commonjs": "^7.0.0",
     "rollup-plugin-node-resolve": "^3.3.0",
     "standard": "^10.0.3",
-    "svc-route": "^0.1.4",
+    "svc-route": "^0.1.5",
     "uglify-js": "^3.3.26",
     "watch-cli": "^0.2.3"
   }
