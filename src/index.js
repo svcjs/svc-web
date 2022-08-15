@@ -1,5 +1,8 @@
 import Http from './webhttp'
-import Tpl from './webtpl'
+import WebSocket from './webscoket'
+import tpl from './webtpl'
 import Route from './webroute'
+import modules from './webmodules'
+import $ from './webutils'
 
-export { Http, Tpl, Route }
+export { Http, Route, WebSocket, tpl, modules, $}

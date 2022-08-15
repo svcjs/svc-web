@@ -1,6 +1,6 @@
 {
   "name": "svc-web",
-  "version": "0.2.1",
+  "version": "0.2.7",
   "description": "a web freamwork",
   "main": "dist/svc-web.cjs.js",
   "module": "dist/svc-web.es.js",
@@ -20,7 +20,7 @@
   "homepage": "https://github.com/svcjs/svc-web#readme",
   "scripts": {
     "lint": "standard --fix rollup.config.js test/** src/**",
-    "build": "rm -rf dist && rollup -c && uglifyjs ./dist/svc-web.js -o ./dist/svc-web.min.js -c warnings=false -m"
+    "build": "rm -rf dist && rollup -c && uglifyjs ./dist/svc-web.js -o ./dist/svc-web.min.js -m"
   },
   "devDependencies": {
     "babel-eslint": "^7.2.3",
@@ -32,7 +32,7 @@
     "rollup-plugin-commonjs": "^7.0.0",
     "rollup-plugin-node-resolve": "^3.3.0",
     "standard": "^10.0.3",
-    "svc-route": "^0.1.2",
+    "svc-route": "^0.1.4",
     "uglify-js": "^3.3.26",
     "watch-cli": "^0.2.3"
   }

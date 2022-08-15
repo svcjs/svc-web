@@ -5,9 +5,9 @@ import resolve from 'rollup-plugin-node-resolve'
 export default {
   entry: 'src/index.js',
   targets: [
-    { dest: 'dist/svc-web.js', format: 'umd' },
-    { dest: 'dist/svc-web.cjs.js', format: 'cjs' },
-    { dest: 'dist/svc-web.es.js', format: 'es' }
+    { dest: 'dist/svc-web.js', format: 'umd', sourceMap: true },
+    { dest: 'dist/svc-web.cjs.js', format: 'cjs', sourceMap: true },
+    { dest: 'dist/svc-web.es.js', format: 'es', sourceMap: true }
   ],
   moduleName: 'svcWeb',
   plugins: [

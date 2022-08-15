@@ -1,4 +1,5 @@
 .*
+!.gitignore
 !.npmignore
 !.gitlab-ci.yml
 !.eslintrc
