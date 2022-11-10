@@ -33,10 +33,11 @@ function makeString (str, datas, thisArg) {
   //   })
   // }
 
-  // if (s1.indexOf('依赖') !== -1) console.info('>', str)
+  // if (s1.indexOf('!r.isHeader?') !== -1) console.info('        .1', str)
   if (str.indexOf('{') !== -1) {
     str = makeStringOnce(str, datas, thisArg)
   }
+  // if (s1.indexOf('!r.isHeader?') !== -1) console.info('        .2', str)
 
   // if (s1.indexOf('依赖') !== -1) console.info('  >', str)
   if (str.indexOf('{') !== -1) {
@@ -68,6 +69,9 @@ function makeStringOnce (str, datas, thisArg) {
   str = str.replace(/\{([^{]*?)\}/g, function (full, part1) {
     // if (str1.indexOf("||'label'") !== -1) console.info(111.5, part1)
     if (!part1) return ''
+    let matchLanguage = part1[0] === '&'
+    // console.info(' >0', matchLanguage, part1)
+    if (matchLanguage) part1 = part1.substring(1)
     try {
       let noMoreTry = part1[0] === '#'
       if (noMoreTry) part1 = part1.substring(1)
@@ -75,16 +79,30 @@ function makeStringOnce (str, datas, thisArg) {
       let func = Function.constructor.apply(null, args)
       let result = func.apply(thisArg || null, values)
       // if (str1.indexOf("||'label'") !== -1) console.info(' =>', args, result)
+      // console.info('  >1', matchLanguage, result)
       if (result === undefined || result === null) return ''
       if (noMoreTry && result.indexOf('{') !== -1 && result.indexOf('}') !== -1) {
         result = result.replace(/\{/g, '__TEMP_NMT_TAG__')
+      }
+      if (matchLanguage) {
+        // console.info('   >2', matchLanguage, result)
+        if ($.lang && $.lang[result]) {
+          result = $.lang[result]
+        }
       }
       return result
     } catch (err) {
       // if(str1.indexOf("||'label'") !== -1) console.error(str, err)
       // console.error(str, err)
       // return full
-      return part1.indexOf('.') !== -1 ? '' : part1
+      if (part1.indexOf('.') !== -1) part1 = '' // 变量找不到返回空
+
+      if (matchLanguage) {
+        if ($.lang && $.lang[part1]) {
+          part1 = $.lang[part1]
+        }
+      }
+      return part1
     }
   })
   // if(str1.indexOf("||'label'") !== -1) console.info(222,str)
@@ -93,7 +111,7 @@ function makeStringOnce (str, datas, thisArg) {
   return str
 }
 
-function _make (nodes, datas, level, dataFields, thisArg) {
+function _make (nodes, datas, level, dataFields, thisArg, render) {
   if (!level) level = 0
   if (!dataFields) dataFields = []
   if (!(nodes instanceof Array)) {
@@ -104,12 +122,36 @@ function _make (nodes, datas, level, dataFields, thisArg) {
     }
   }
 
+  if (!render) render = {}
+  render = {
+    box: render.box,
+    // parent: render.parent,
+    row: render.row,
+  }
+
+  // let t1 = new Date().getTime()
+  // if(nodes.length>1000) {
+  //   console.info(' ====>1', t1, nodes)
+  // }
+  // let aaa1 = 0
   for (let node of nodes) {
     if (!node) continue
     if (node.isTplMaked) {
       node.parentElement.removeChild(node)
       continue
     }
+
+    if (node.isRenderRow && !render.box && node.renderBox) {
+      // console.info('node.isRenderRow', node, node.isRenderRow, render.box, node.renderBox, $.json(render))
+      render.box = node.renderBox
+      render.box.renderChilds = []
+    }
+
+    // if(aaa1 === 0 && nodes.length>1000) {
+    //   aaa1 = 1
+    //   let t2 = new Date().getTime()
+    //   console.info('    ====>1.5', t2 - t1)
+    // }
 
     // 初始化动态dom
     if (node.tagName === 'DOM') {
@@ -120,6 +162,104 @@ function _make (nodes, datas, level, dataFields, thisArg) {
       node.parentElement.insertBefore(cdom, node)
       node.parentElement.removeChild(node)
       node = cdom // 让下面可以立刻处理
+    }
+
+    // 动态渲染节点
+    let isRendingRow = false
+    let isRenderRow = false
+    if (render.row) {
+      isRendingRow = true
+    } else {
+      // 动态渲染行
+      if (render.box) {
+        // if (node.hasAttribute && node.hasAttribute('renderParent')) {
+        //   // node.renderBox = render.box
+        //   render.parent = node
+        // }
+        if (node.isRenderRow || (node.hasAttribute && node.hasAttribute('renderRow'))) {
+          // console.info('********', node.isRenderRow, node.hasAttribute && node.hasAttribute('renderRow'), node)
+          node.isRenderRow = true
+          node.renderBox = render.box
+          isRenderRow = true
+          // console.info('isRenderRow', node)
+          // setTimeout(() => {
+          //   render.box.renderTopOffset = render.parent ? render.parent.offsetTop : 0
+          //   // console.info('    >>1', render.parent.offsetTop)
+          // })
+          // render.box.renderRowHeight = node.getAttribute('renderRowHeight') || 30
+          // render.box.renderCount = node.getAttribute('renderCount') || 30
+          // console.info('  >>1', render.box.renderTopOffset, node.clientHeight, node.getAttribute('renderRowHeight'))
+          // node.renderBox.renderChilds.push(node)
+          render.row = node
+          if (render.box.renderRowEvent === undefined) render.box.renderRowEvent = !!$('[events]', node)
+        }
+      }
+
+      // 动态渲染容器
+      if (node.isRenderBox || (node.hasAttribute && node.hasAttribute('renderBox'))) {
+        node.isRenderBox = true
+        let renderBox = node
+        renderBox.renderRowEventTarget = thisArg
+        render.box = renderBox
+        renderBox.renderChilds = []
+        if (renderBox.renderAction) {
+          renderBox.removeEventListener('scroll', renderBox.renderAction)
+        }
+        let renderAction = event => {
+          // if (!renderBox.renderRowHeight) renderBox.renderRowHeight = renderBox.renderChilds.length ? renderBox.scrollHeight / renderBox.renderChilds.length : 30
+          // console.info('>> #', renderBox.scrollHeight, renderBox.renderChilds.length, renderBox.scrollHeight / renderBox.renderChilds.length)
+          // console.info('>> ^', render.box, renderBox.renderChilds)
+          // $.timer('渲染').trace('开始计算')
+          let makeList = []
+          for (let i = 0; i < renderBox.renderChilds.length; i++) {
+            let rowNode = renderBox.renderChilds[i]
+            if (rowNode.offsetTop >= renderBox.scrollTop - renderBox.clientHeight) {
+              if (!rowNode.renderMade) {
+                rowNode.renderMade = true
+                makeList.push(rowNode)
+              }
+            }
+            if (rowNode.offsetTop >= renderBox.scrollTop + renderBox.clientHeight * 2) {
+              // console.info(' >> $', i, rowNode.offsetTop, '>=', renderBox.scrollTop + renderBox.clientHeight * 2, '|', renderBox.scrollTop, '+', renderBox.clientHeight, '* 2')
+              break
+            }
+          }
+          // $.timer('渲染').trace('开始生成'+makeList.length)
+          if (makeList.length > 0) {
+            // _make(makeList, datas, level + 1, dataFields, thisArg, {})
+            // console.info(makeList)
+            let eventNodes = []
+            for (let rowNode of makeList) {
+              if (rowNode.data) {
+                for (let k in rowNode.data) {
+                  datas[k] = rowNode.data[k]
+                }
+              }
+              // console.info(rowNode, datas, thisArg)
+              refresh(rowNode, datas, thisArg)
+              rowNode.style.visibility = 'visible'
+              // console.info('  >> visible', rowNode)
+              if (renderBox.renderRowEvent) {
+                eventNodes.push(...$.all('[events]', rowNode))
+              }
+            }
+            // console.info(3333, renderBox.renderRowEventTarget, thisArg)
+            if (eventNodes.length > 0) {
+              makeEvents(eventNodes, renderBox.renderRowEventTarget)
+            }
+          }
+          // $.timer('渲染').trace('完成')
+          // console.info(event)
+          // console.info(renderBox.renderChilds.length, event.currentTarget.scrollTop, event.currentTarget.clientHeight)
+          // TODO 根据滚轮滚动对数据进行重新定位和渲染
+        }
+        renderBox.renderAction = renderAction
+        renderBox.addEventListener('scroll', renderAction)
+        setTimeout(() => {
+          // renderAction({ currentTarget: renderBox })
+          renderAction()
+        })
+      }
     }
 
     // 初始化循环和条件
@@ -150,6 +290,9 @@ function _make (nodes, datas, level, dataFields, thisArg) {
       cdom.parentTagName = node.parentElement.tagName
       node.parentElement.insertBefore(cdom, node)
       node.parentElement.removeChild(node)
+      if (node.isRenderBox) cdom.isRenderBox = node.isRenderBox
+      if (node.isRenderRow) cdom.isRenderRow = node.isRenderRow
+      if (node.renderBox) cdom.renderBox = node.renderBox
       node = cdom // 让下面可以立刻处理
     }
 
@@ -197,6 +340,14 @@ function _make (nodes, datas, level, dataFields, thisArg) {
       }
     }
 
+    if (isRendingRow && node.style && node.hasAttribute('renderRow')) {
+      node.style.visibility = 'hidden'
+      // console.info('>> hidden', node)
+      // node.rendered = false
+      //   tpl.makeEvents(this.$.all('[events]'), this)
+      continue
+    }
+
     // 处理属性
     if (level === 0 && node.getAttribute && node.getAttribute('module')) {
       // module 的第一级不处理（由调用方处理）
@@ -227,6 +378,7 @@ function _make (nodes, datas, level, dataFields, thisArg) {
         let bindVar = node.attributes.bind.value
         node.bindVar = bindVar
         node.binds = bindVar.split('.')
+
         switch (node.tagName) {
           case 'INPUT':
           case 'TEXTAREA':
@@ -250,7 +402,7 @@ function _make (nodes, datas, level, dataFields, thisArg) {
                 v = e.target.value
               }
               if (v !== null) {
-                // console.info(e.target.binds, v, node.bindDatas)
+                // if (node.type === 'checkbox') console.info(111, e.target.binds, v, node.bindDatas)
                 _setVarsValue(e.target.binds, v, node.bindDatas)
                 let onbind = e.target.getAttribute('onbind')
                 if (onbind) {
@@ -260,13 +412,54 @@ function _make (nodes, datas, level, dataFields, thisArg) {
               }
             })
             break
+          default:
+            // 支持 radio、checkbox
+            let bindType = node.getAttribute('bindType')
+            if (!bindType) {
+              if (node.innerHTML.indexOf('type="radio"') !== -1) {
+                bindType = 'radio'
+              } else if (node.innerHTML.indexOf('type="checkbox"') !== -1) {
+                bindType = 'checkbox'
+              }
+            }
+
+            // let radios = $.all('[type="radio"]', node)
+            // let checkboxs = $.all('[type="checkbox"]', node)
+            // if (radios.length > 0 || checkboxs.length > 0) {
+            // for (let radio of radios) {
+            //   radio.checked = radio.value === data
+            // }
+            // for (let checkbox of checkboxs) {
+            //   checkbox.checked = checkbox.value === data
+            // }
+            if (bindType) {
+              node.addEventListener('change', (e) => {
+                if (bindType === 'radio') {
+                  _setVarsValue(e.currentTarget.binds, e.target.value, node.bindDatas)
+                } else if (bindType === 'checkbox') {
+                  let values = []
+                  $.all('[type="checkbox"]', n => {
+                    if (n.checked) values.push(n.value)
+                  }, node)
+                  _setVarsValue(e.currentTarget.binds, values, node.bindDatas)
+                }
+
+                let onbind = e.currentTarget.getAttribute('onbind')
+                if (onbind) {
+                  let func = Function.constructor.apply(null, [onbind])
+                  func(e)
+                }
+
+              })
+            }
+          // }
         }
       }
     }
 
     // 处理绑定
     if (node.bindVar) {
-      let bindVar = makePreVars(node.bindVar, datas, thisArg)
+      let bindVar = makePreVars(node.bindVar, datas, false, thisArg)
       if (bindVar.indexOf('[') !== -1) {
         // 处理有数组的情况
         node.binds = []
@@ -323,7 +516,6 @@ function _make (nodes, datas, level, dataFields, thisArg) {
       }
       if (!data && bindVar) {
         data = makeString('{' + bindVar + '}', datas, thisArg)
-        // console.info(111,bindVar, data)
         // if (!data && nodeBinds.length === 1) {
         //   data = nodeBinds[0]
         // }
@@ -367,14 +559,73 @@ function _make (nodes, datas, level, dataFields, thisArg) {
           }
           break
         default:
-          // let nodeChildren = node.children
-          // if (nodeChildren.length > 0) {
-          //   // console.info(nodeBinds, nodeChildren)
-          //   node.innerHTML = data || ''
-          // } else {
-          //   node.innerText = data || ''
-          // }
-          node.innerHTML = data || ''
+          let bindType = node.getAttribute('bindType')
+          if (!bindType) {
+            if (node.innerHTML.indexOf('type="radio"') !== -1) {
+              bindType = 'radio'
+            } else if (node.innerHTML.indexOf('type="checkbox"') !== -1) {
+              bindType = 'checkbox'
+            }
+          }
+
+          if (bindType) {
+            // 延后处理，等子节点先渲染好（如循环、判断）
+            setTimeout(() => {
+              // let isTestNode = $.hasClass(node, 'testNode')
+              if (bindType === 'radio') {
+                let radios = $.all('[type="radio"]', node)
+                // let isTestNode = $.hasClass(node, 'testNode')
+                // if (isTestNode) console.info(11, node.ifs, node.eachs)
+                if (radios.length > 0) {
+                  // if (isTestNode) console.info(22)
+                  for (let radio of radios) {
+                    radio.checked = radio.value === data
+                  }
+                }
+              } else if (bindType === 'checkbox') {
+                let checkboxs = $.all('[type="checkbox"]', node)
+                if (checkboxs.length > 0) {
+                  // if (isTestNode) console.info(33)
+                  if (!data instanceof Array) data = [data]
+                  for (let checkbox of checkboxs) {
+                    checkbox.checked = data.indexOf(checkbox.value) !== -1
+                  }
+                }
+              }
+            })
+          } else {
+            node.innerHTML = data || ''
+          }
+
+        // let radios = $.all('[type="radio"]', node)
+        // let isTestNode = $.hasClass(node, 'testNode')
+        // if (isTestNode) console.info(11, node.ifs, node.eachs)
+        // if (radios.length > 0) {
+        //   if (isTestNode) console.info(22)
+        //   for (let radio of radios) {
+        //     radio.checked = radio.value === data
+        //   }
+        // } else {
+        //   let checkboxs = $.all('[type="checkbox"]', node)
+        //   if (checkboxs.length > 0) {
+        //     if (isTestNode) console.info(33)
+        //     if (!data instanceof Array) data = [data]
+        //     for (let checkbox of checkboxs) {
+        //       checkbox.checked = data.indexOf(checkbox.value) !== -1
+        //     }
+        //   } else {
+        //     if (isTestNode) console.info(44)
+        //     node.innerHTML = data || ''
+        //   }
+        // }
+
+        // let nodeChildren = node.children
+        // if (nodeChildren.length > 0) {
+        //   // console.info(nodeBinds, nodeChildren)
+        //   node.innerHTML = data || ''
+        // } else {
+        //   node.innerText = data || ''
+        // }
 
         // let checkboxs = $.all('[type="checkbox"]', node)
         // if(checkboxs){
@@ -402,7 +653,7 @@ function _make (nodes, datas, level, dataFields, thisArg) {
       if (domHtml) {
         let dom = document.createElement(node.parentTagName || 'div')
         dom.innerHTML = domHtml
-        _make(dom, datas, level + 1, dataFields, thisArg)
+        _make(dom, datas, level + 1, dataFields, thisArg, render)
         for (let domItem of dom.children) {
           domItem.firstChild.isTplMaked = true
           for (let i = 0; i < node.attributes.length; i++) {
@@ -418,7 +669,7 @@ function _make (nodes, datas, level, dataFields, thisArg) {
     if (node['ifs']) {
       // let ifs = node['ifs']
       // let ifs = makePreVars(node['ifs'], datas, true)
-      let ifs = makePreVars(node['ifs'], datas, thisArg)
+      let ifs = makePreVars(node['ifs'], datas, true, thisArg)
       // if (node['ifs'].indexOf('依赖') !== -1) console.info(node['ifs'], ifs)
       // .startsWith('{') ? makeString(node['ifs'], datas) : node['ifs']
       // if (ifs.indexOf('{') !== -1) {
@@ -467,7 +718,7 @@ function _make (nodes, datas, level, dataFields, thisArg) {
       if (isShow && isShow !== 'false' && isShow !== '0' && isShow !== 'undefined' && isShow !== 'null') {
         let dom = document.createElement(node.parentTagName || 'div')
         dom.innerHTML = node.htmlTpl
-        _make(dom, datas, level + 1, dataFields, thisArg)
+        _make(dom, datas, level + 1, dataFields, thisArg, render)
         dom.firstChild.isTplMaked = true
         node.parentElement.insertBefore(dom.firstChild, node)
         // _make(node.previousSibling, datas)
@@ -483,7 +734,7 @@ function _make (nodes, datas, level, dataFields, thisArg) {
         // if (eachVars.length > 1) console.info(111, eachVars)
         let itemsData = []
         for (let eachVar of eachVars) {
-          eachVar = makePreVars(eachVar, datas, thisArg)
+          eachVar = makePreVars(eachVar, datas, false, thisArg)
           // if (eachVar.indexOf('[') !== -1) {
           //   // 预处理循环中的动态变量
           //   eachVar = eachVar.replace(/\[.*?]/g, word => {
@@ -538,8 +789,45 @@ function _make (nodes, datas, level, dataFields, thisArg) {
           }
         }
 
-        // 处理数据
         if (itemsData) {
+          // if (isRenderRow && itemsData.length > render.box.renderCount) {
+          //   // 动态渲染超长列表（小于50行不做处理）
+          //   // render.box.renderRow = node
+          //   render.box.renderData = itemsData
+          //   render.box.style.overflowY = 'hidden !important'
+          //   render.box.style.overflowX = 'auto !important'
+          //   // let parent = render.parent || render.box
+          //   // parent.style.height = (render.box.renderRowHeight * itemsData.length) + 'px'
+          //   // console.info('  >>2 out eachs', parent.style.height, itemsData)
+          //
+          //   // 生成可复用对象池
+          //   for (let index = 0; index < render.box.renderCount; index++) {
+          //     let dom = document.createElement(node.parentTagName || 'div')
+          //     dom.innerHTML = node.htmlTpl
+          //     datas[node.eachs.index] = index
+          //     datas[node.eachs.item] = itemsData[index]
+          //     let newDataFields = $.copy(dataFields)
+          //     newDataFields.push(node.eachs.index)
+          //     newDataFields.push(node.eachs.item)
+          //     _make(dom, datas, level + 1, newDataFields, thisArg, render)
+          //     dom.firstChild.isTplMaked = true
+          //     let newDom = dom.firstChild
+          //     node.parentElement.insertBefore(dom.firstChild, node)
+          //
+          //     // 设置 data
+          //     let newDomData = {}
+          //     for (let df of newDataFields) {
+          //       // console.info(111, df, datas[df])
+          //       newDomData[df] = datas[df]
+          //     }
+          //     newDom.data = newDomData
+          //     // console.info('  222', newDomData, newDom.data)
+          //
+          //     // _make(node.previousSibling, datas)
+          //   }
+          //
+          // } else {
+          // 处理数据
           for (let index in itemsData) {
             let dom = document.createElement(node.parentTagName || 'div')
             dom.innerHTML = node.htmlTpl
@@ -548,10 +836,10 @@ function _make (nodes, datas, level, dataFields, thisArg) {
             let newDataFields = $.copy(dataFields)
             newDataFields.push(node.eachs.index)
             newDataFields.push(node.eachs.item)
-            _make(dom, datas, level + 1, newDataFields, thisArg)
-            dom.firstChild.isTplMaked = true
+            _make(dom, datas, level + 1, newDataFields, thisArg, render)
             let newDom = dom.firstChild
-            node.parentElement.insertBefore(dom.firstChild, node)
+            newDom.isTplMaked = true
+            node.parentElement.insertBefore(newDom, node)
 
             // 设置 data
             let newDomData = {}
@@ -563,7 +851,15 @@ function _make (nodes, datas, level, dataFields, thisArg) {
             // console.info('  222', newDomData, newDom.data)
 
             // _make(node.previousSibling, datas)
+            if (isRenderRow) {
+              // console.info('~~~', index, newDom)
+              render.box.renderChilds.push(newDom)
+            }
           }
+          // if (isRenderRow) {
+          //   render.box.renderRowCount = itemsData.length
+          // }
+          // }
         }
       }
       // 循环会处理好子对象，不需要在继续
@@ -581,13 +877,19 @@ function _make (nodes, datas, level, dataFields, thisArg) {
     }
 
     // 递归处理子集
-    _make(node, datas, level + 1, dataFields, thisArg)
+    _make(node, datas, level + 1, dataFields, thisArg, render)
   }
+  // let t2 = new Date().getTime()
+  // if(nodes.length>1000) {
+  //   console.info('    ====>2', t2 - t1)
+  // }
+
 }
 
 function makePreVars (str, datas, isBool, thisArg) {
   // let str1 = str
   // if (str1.indexOf('+') !== -1) console.info('  makePreVars', str, datas)
+  // if (str1.indexOf('{!data.currentRow.innerId?') !== -1) console.info('  makePreVars1', str, isBool, datas)
   if (str.indexOf('{') !== -1) {
     // 预处理循环中的动态变量
     str = str.replace(/\{[^{]+?}/g, word => {
@@ -595,6 +897,7 @@ function makePreVars (str, datas, isBool, thisArg) {
       return !isBool ? r : r && r !== 'false' && r !== '0' && r !== 'undefined' && r !== 'null' ? 'true' : 'false'
     })
   }
+  // if (str1.indexOf('{!data.currentRow.innerId?') !== -1) console.info('  makePreVars2', str, datas)
 
   if (str.indexOf('[') !== -1) {
     // 预处理循环中的动态变量
@@ -602,15 +905,20 @@ function makePreVars (str, datas, isBool, thisArg) {
     str = str.replace(/\[[^\[]+?]/g, word => {
       let r = makeString('{' + word.substring(1, word.length - 1) + '}', datas, thisArg)
       // if (str1.indexOf('+') !== -1) console.info(222,word, '{' + word.substring(1, word.length - 1) + '}', r)
+      // console.info(0, str, r)
       if (!r) {
         // if (str1.indexOf('+') !== -1) console.info(333,str)
+        // console.info(111, word)
         return word
       }
-      if (/^[\-+]?[1-9]\d*$/.test(r)) {
+      if (/^[\-+]?[0-9]\d*$/.test(r)) {
         // if (str1.indexOf('+') !== -1) console.info(444,str)
-        return '[' + r + ']'
+        // console.info(222, '[' + r + ']')
+        // return '[' + r + ']'
+        return '.' + r  // 数字也可以用这种方式
       }
       // if (str1.indexOf('+') !== -1) console.info(555,str)
+      // console.info(333, '.' + r)
       return '.' + r
     })
   }
@@ -627,12 +935,16 @@ function makePreVars (str, datas, isBool, thisArg) {
     // 预处理循环中的动态变量
     str = str.replace(/\[[^\[]+?]/g, word => {
       let r = makeString('{' + word.substring(1, word.length - 1) + '}', datas, thisArg)
+      // console.info(' ====', str, r)
       if (!r) {
+        // console.info(' == 0', word)
         return word
       }
       if (/^[\-+]?[1-9]\d*$/.test(r)) {
+        // console.info(' == 1', '[' + r + ']')
         return '[' + r + ']'
       }
+      // console.info(' == 2', '[' + r + ']')
       return '.' + r
     })
   }
@@ -704,12 +1016,12 @@ function refresh (node, datas, thisArg) {
   for (let k in datas) {
     if (k !== 'data') dataFields.push(k)
   }
-  _make(node, datas, 0, dataFields, thisArg)
+  _make(node, datas, 0, dataFields, thisArg, {})
   fixSvg(node)
 }
 
 function make (targetNode, datas, thisArg) {
-  _make([targetNode], datas, 0, [], thisArg)
+  _make([targetNode], datas, 0, [], thisArg, {})
   fixSvg(targetNode)
 }
 
@@ -720,7 +1032,7 @@ function makeSelf (targetNode, datas, thisArg) {
 function makeSubs (targetNode, datas, thisArg) {
   let a = []
   for (let node of targetNode.childNodes) a.push(node)
-  _make(a, datas, 0, [], thisArg)
+  _make(a, datas, 0, [], thisArg, {})
   fixSvg(targetNode)
 }
 
@@ -858,7 +1170,6 @@ function makeEvents (nodes, target) {
               node.events[a[0] + 'Func'] = func
               // console.info(a, func)
 
-              // if(a[1]==='save2')console.info('        >>>>',node, a, func, target)
               node.addEventListener(a[0], func, a.length > 2)
             }
           }

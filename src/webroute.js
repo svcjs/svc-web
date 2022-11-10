@@ -112,6 +112,31 @@ function _setData (values) {
   return this.refreshView()
 }
 
+function _getViewByName (name) {
+  let path = $.getBy(this.route.paths, 'pathName', name)
+  if (!path) path = $.getBy(this.route.paths, 'name', name)
+  if (path) {
+    return window._cachedViews[path.pathName]
+  }
+  return null
+}
+
+function _getParentView () {
+  let pos = $.indexBy(this.route.paths, 'pathName', this.pathName)
+  if (pos !== -1 && pos > 0) {
+    return window._cachedViews[this.route.paths[pos - 1].pathName]
+  }
+  return null
+}
+
+function _getNextView () {
+  let pos = $.indexBy(this.route.paths, 'pathName', this.pathName)
+  if (pos !== -1 && this.route.paths.length > pos + 1) {
+    return window._cachedViews[this.route.paths[pos + 1].pathName]
+  }
+  return null
+}
+
 function _refreshView (target, isMake) {
   return new Promise((resolve, reject) => {
     let refreshViewCallbacks = []
@@ -120,19 +145,23 @@ function _refreshView (target, isMake) {
       try {
         let datas = this.datas || {}
         datas.data = this.data
+
         if (target) {
-          if (target.data) {
-            for (let k in target.data) {
-              datas[k] = target.data[k]
+          let data = $.findDomProperty(target, 'data', this.dom)
+          if(data){
+            for (let k in data) {
+              datas[k] = data[k]
             }
           }
+          let keepDisplay = getComputedStyle(target).display
           if (isMake) {
-            tpl.make(target, datas)
+            tpl.make(target, datas, this)
           } else {
-            tpl.refresh(target, datas)
+            tpl.refresh(target, datas, this)
           }
+          if (keepDisplay) target.style.display = keepDisplay
         } else {
-          tpl.make(this.$(), datas)
+          tpl.make(this.$(), datas, this)
         }
         for (let callbacks of refreshViewCallbacks) {
           callbacks[0]()
@@ -228,6 +257,9 @@ export default class extends Route {
         }
         window._cachedViews[path.pathName] = view
         view.route = this
+        view.getViewByName = _getViewByName.bind(view)
+        view.getParentView = _getParentView.bind(view)
+        view.getNextView = _getNextView.bind(view)
         view.parent = parentView
         view.nextPath = paths.length - 1 > i ? paths[i + 1] : null
         view.$ = _$.bind(view)
@@ -301,7 +333,14 @@ export default class extends Route {
 
       // 路由中未变化的部分
       if (i < samePos) {
-        if (view.onCheckShowed) view.onCheckShowed({ oldPath, path, prevPath, paths: availablePaths, nextPath, nextView })
+        if (view.onCheckShowed) view.onCheckShowed({
+          oldPath,
+          path,
+          prevPath,
+          paths: availablePaths,
+          nextPath,
+          nextView
+        })
         continue
       }
 
@@ -328,7 +367,14 @@ export default class extends Route {
 
       // 路由中未变化的部分
       if (i == samePos) {
-        if (view.onCheckShowed) view.onCheckShowed({ oldPath, path, prevPath, paths: availablePaths, nextPath, nextView })
+        if (view.onCheckShowed) view.onCheckShowed({
+          oldPath,
+          path,
+          prevPath,
+          paths: availablePaths,
+          nextPath,
+          nextView
+        })
       }
 
       if (i > samePos) {
