@@ -9,12 +9,13 @@ global XMLHttpRequest
  */
 
 function _$ (selector) {
-  return $(selector, document.querySelector('#SUBVIEW_' + this.parentPathName.replace(/\./, '_')))
+  let subViewId = this.parentPathName ? '#SUBVIEW_' + this.parentPathName.replace(/\./, '_') : '#SUBVIEW_ROOT'
+  return $(selector, document.querySelector(subViewId))
 
   let nodes = this.$.all(selector)
   // console.info(selector, nodes)
   if (nodes.length > 0) return nodes[0]
-  return document.querySelector('#SUBVIEW_' + this.parentPathName.replace(/\./, '_'))
+  return document.querySelector(subViewId)
 }
 
 function _filterNodes (nodes, from) {
@@ -40,7 +41,8 @@ function _isValidNode (node, from) {
 }
 
 function _$all (selector, callback) {
-  let from = document.querySelector('#SUBVIEW_' + this.parentPathName.replace(/\./, '_'))
+  let subViewId = this.parentPathName ? '#SUBVIEW_' + this.parentPathName.replace(/\./, '_') : '#SUBVIEW_ROOT'
+  let from = document.querySelector(subViewId)
   if (callback && callback instanceof Function) {
     let realCallback = callback
     callback = function (node) {
@@ -77,7 +79,7 @@ function _go (path, args) {
   }
 }
 
-function _setData (values) {
+function _setData (values, onlySelf) {
   let routeChanged = false
   let path = null
   for (let key in values) {
@@ -105,7 +107,7 @@ function _setData (values) {
     if (routeChanged) {
       this.route.remakeRouteUrl()
       location.hash = '#' + this.route.routeUrl
-      this.route.makeRoute()
+      if (!onlySelf) this.route.makeRoute()
     }
   }
 
@@ -148,7 +150,7 @@ function _refreshView (target, isMake) {
 
         if (target) {
           let data = $.findDomProperty(target, 'data', this.dom)
-          if(data){
+          if (data) {
             for (let k in data) {
               datas[k] = data[k]
             }
@@ -167,7 +169,7 @@ function _refreshView (target, isMake) {
           callbacks[0]()
         }
         if (this.makeEvents) this.makeEvents()
-        if (this.onRefreshed) this.onRefreshed()
+        if (this.onRefreshed) this.onRefreshed(target, isMake)
       } catch (err) {
         console.error(err)
         for (let callbacks of refreshViewCallbacks) {
@@ -179,7 +181,6 @@ function _refreshView (target, isMake) {
 }
 
 function _makeEvents () {
-  // console.info(888, this.$.all('[events]'), this)
   tpl.makeEvents(this.$.all('[events]'), this)
 }
 
@@ -218,7 +219,23 @@ export default class extends Route {
     let parentView = this.Root
     let availablePaths = []
     let samePos = -1
-    if (window._cachedViews === undefined) window._cachedViews = { ROOT: this.Root }
+    if (window._cachedViews === undefined) {
+      // 初始化ROOT
+      window._cachedViews = { ROOT: this.Root }
+      tpl.make(window.document.body, this.Root.data || {})
+      setTimeout(() => {
+        tpl.makeEvents($.all('[events]', window.document.body), this.Root)
+      })
+      // this.Root.dom = window.body
+      // this.Root.$ = _$.bind(this.Root)
+      // this.Root.$.all = _$all.bind(this.Root)
+      // this.Root.setData = _setData.bind(this.Root)
+      // this.Root.refreshView = _refreshView.bind(this.Root)
+      // this.Root.makeEvents = _makeEvents.bind(this.Root)
+      // this.Root.go = _go.bind(this.Root)
+      // this.Root.refreshView()
+      // console.info('---')
+    }
     let currentUrls = []
     for (let i = 0; i < paths.length; i++) {
       let path = paths[i]

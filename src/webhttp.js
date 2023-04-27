@@ -60,7 +60,7 @@ export default class {
   }
 
   request (method, { path, data, headers, context, timeout }) {
-    if (!timeout) timeout = 10000
+    if (!timeout) timeout = 30000
     let ac = new AbortController()
     let option = {
       signal: ac.signal,

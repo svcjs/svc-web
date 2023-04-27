@@ -10,7 +10,7 @@ function _setVarsValue (vars, value, datas) {
 }
 
 function makeString (str, datas, thisArg) {
-  // let s1 = str
+  let str1 = str
 
   // // 处理动态属性
   // let p1 = str.indexOf('[')
@@ -34,15 +34,18 @@ function makeString (str, datas, thisArg) {
   // }
 
   // if (s1.indexOf('!r.isHeader?') !== -1) console.info('        .1', str)
+  // if (str1.indexOf("!='table'") !== -1) console.info('        ====1', str)
   if (str.indexOf('{') !== -1) {
     str = makeStringOnce(str, datas, thisArg)
   }
   // if (s1.indexOf('!r.isHeader?') !== -1) console.info('        .2', str)
+  // if (str1.indexOf("!='table'") !== -1) console.info('        ====2', str)
 
   // if (s1.indexOf('依赖') !== -1) console.info('  >', str)
   if (str.indexOf('{') !== -1) {
     str = makeStringOnce(str, datas, thisArg)
   }
+  // if (str1.indexOf("!='table'") !== -1) console.info('        ====3', str)
 
   // if (s1.indexOf('依赖') !== -1) console.info('    >', str)
   if (str.indexOf('{') !== -1) {
@@ -51,6 +54,8 @@ function makeString (str, datas, thisArg) {
 
   if (str.indexOf('__TEMP_NMT_TAG__') !== -1) str = str.replace(/__TEMP_NMT_TAG__/g, '{')
   // if (s1.indexOf('依赖') !== -1) console.info('      >', str)
+  // if (str1.indexOf("!='table'") !== -1) console.info('        ====4', str)
+
   return str
 }
 
@@ -64,11 +69,13 @@ function makeStringOnce (str, datas, thisArg) {
   let lastArgsIndex = args.length
   args.push('return null')
 
-  // let str1 = str
-  // if(str1.indexOf("||'label'") !== -1) console.info(111,str)
+  let str1 = str
+  // if(str1.indexOf("!='table'") !== -1) console.info(111,str)
   str = str.replace(/\{([^{]*?)\}/g, function (full, part1) {
-    // if (str1.indexOf("||'label'") !== -1) console.info(111.5, part1)
+    // if (str1.indexOf("!='table'") !== -1) console.info(111.5, part1)
     if (!part1) return ''
+    if (part1[0] === '^') return '__TEMP_NMT_TAG__' + part1.substring(1) + '}'
+
     let matchLanguage = part1[0] === '&'
     // console.info(' >0', matchLanguage, part1)
     if (matchLanguage) part1 = part1.substring(1)
@@ -78,7 +85,7 @@ function makeStringOnce (str, datas, thisArg) {
       args[lastArgsIndex] = 'return ' + part1
       let func = Function.constructor.apply(null, args)
       let result = func.apply(thisArg || null, values)
-      // if (str1.indexOf("||'label'") !== -1) console.info(' =>', args, result)
+      // if (str1.indexOf("!='table'") !== -1) console.info(' =>', args, result)
       // console.info('  >1', matchLanguage, result)
       if (result === undefined || result === null) return ''
       if (noMoreTry && result.indexOf('{') !== -1 && result.indexOf('}') !== -1) {
@@ -92,7 +99,7 @@ function makeStringOnce (str, datas, thisArg) {
       }
       return result
     } catch (err) {
-      // if(str1.indexOf("||'label'") !== -1) console.error(str, err)
+      // if(str1.indexOf("!='table'") !== -1) console.error(str, err)
       // console.error(str, err)
       // return full
       if (part1.indexOf('.') !== -1) part1 = '' // 变量找不到返回空
@@ -109,6 +116,126 @@ function makeStringOnce (str, datas, thisArg) {
 
   // console.info(222, str, args)
   return str
+}
+
+function splitVar (v) {
+  if (v.indexOf('[\'')) {
+    v = v.replaceAll('\']', '')
+    v = v.replaceAll('[\'', '.')
+  }
+  if (v.indexOf('[')) {
+    v = v.replaceAll(']', '')
+    v = v.replaceAll('[', '.')
+  }
+  return v.split('.')
+}
+
+function renderAction (event) {
+  // if (!renderBox.renderRowHeight) renderBox.renderRowHeight = renderBox.renderChilds.length ? renderBox.scrollHeight / renderBox.renderChilds.length : 30
+  // console.info('>> #', renderBox.scrollHeight, renderBox.renderChilds.length, renderBox.scrollHeight / renderBox.renderChilds.length)
+  // console.info('>> ^', render.box, renderBox.renderChilds)
+  // $.timer('渲染').trace('开始计算')
+  // let t1 = new Date().getTime()
+  // let rrr = Math.floor(Math.random() * 100000).toString(36)
+  // console.info(rrr, 111, this.renderTID, this.renderChilds.length, this)
+  if (this.renderTID) clearTimeout(this.renderTID)
+  this.renderTID = setTimeout(() => {
+    // console.info(rrr, 222, this.renderChilds.length)
+    this.renderTID = 0
+
+    let makeList = []
+    for (let i = 0; i < this.renderChilds.length; i++) {
+      let rowNode = this.renderChilds[i]
+      // console.info("  >>>", i, rowNode.offsetTop, this.scrollTop, this.clientHeight, rowNode.offsetTop, this.scrollTop - this.clientHeight)
+      if (rowNode.offsetTop >= this.scrollTop - this.clientHeight) {
+        if (!rowNode.renderMade) {
+          rowNode.renderMade = true
+          makeList.push(rowNode)
+        }
+      }
+      // console.info("    >>>>>", i, rowNode.offsetTop, this.scrollTop, this.clientHeight, rowNode.offsetTop >= this.scrollTop, this.clientHeight * 2)
+      if (rowNode.offsetTop >= this.scrollTop + this.clientHeight * 2) {
+        // console.info(' >> $', i, rowNode.offsetTop, '>=', this.scrollTop + this.clientHeight * 2, '|', this.scrollTop, '+', this.clientHeight, '* 2')
+        break
+      }
+    }
+    // console.info(makeList.length)
+    // let t2 = new Date().getTime()
+    // console.info('    >>>>>>>>>>>>>>>>====------------>2', t2 - t1)
+
+    // $.timer('渲染').trace('开始生成'+makeList.length)
+    // let t9 = 0
+    // let t9c = 0
+    let isAsync = this.renderChilds.length > 100
+    // console.info(rrr,333, makeList.length, isAsync)
+    if (makeList.length > 0) {
+      // _make(makeList, this.datas, level + 1, dataFields, this.thisArg, {})
+
+      if (isAsync) {
+        for (let i = 0; i < makeList.length; i += 10) {
+          let start = i
+          let end = Math.min(i + 10, makeList.length)
+          // setTimeout((thatRowNode, thatDatas) => {
+          //   refresh(thatRowNode, thatDatas, this.thisArg)
+          //   thatRowNode.style.visibility = 'visible'
+          // }, 0, rowNode, $.copy(this.datas))
+          // console.info(rrr,444.1, makeList.length, isAsync)
+          setTimeout(() => {
+            // console.info(rrr,444.2, start, end)
+            for (let j = start; j < end; j++) {
+              let rowNode = makeList[j]
+
+              if (rowNode.data) {
+                for (let k in rowNode.data) {
+                  this.datas[k] = rowNode.data[k]
+                }
+              }
+              refresh(rowNode, this.datas, this.thisArg)
+              rowNode.style.visibility = 'visible'
+            }
+          }, 0)
+
+          // if (rowNode.data) {
+          //   for (let k in rowNode.data) {
+          //     this.datas[k] = rowNode.data[k]
+          //   }
+          // }
+        }
+      } else {
+        for (let rowNode of makeList) {
+          // console.info(rrr,555.1, makeList.length, rowNode)
+          if (rowNode.data) {
+            for (let k in rowNode.data) {
+              this.datas[k] = rowNode.data[k]
+            }
+          }
+          refresh(rowNode, this.datas, this.thisArg)
+          rowNode.style.visibility = 'visible'
+        }
+      }
+      // console.info(3333, this.renderRowEventTarget, this.thisArg)
+
+      setTimeout(() => {
+        let eventNodes = []
+        for (let rowNode of makeList) {
+          if (this.renderRowEvent) {
+            eventNodes.push(...$.all('[events]', rowNode))
+          }
+        }
+        if (eventNodes.length > 0) {
+          makeEvents(eventNodes, this.renderRowEventTarget)
+        }
+      })
+    }
+    // let t3 = new Date().getTime()
+    // console.info('    >>>>>>>>>>>>>>>>====------------>3', t3 - t2, t9c, t9)
+
+    // $.timer('渲染').trace('完成')
+    // console.info(event)
+    // console.info(this.renderChilds.length, event.currentTarget.scrollTop, event.currentTarget.clientHeight)
+    // TODO 根据滚轮滚动对数据进行重新定位和渲染
+  }, 30)
+
 }
 
 function _make (nodes, datas, level, dataFields, thisArg, render) {
@@ -205,59 +332,93 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
         if (renderBox.renderAction) {
           renderBox.removeEventListener('scroll', renderBox.renderAction)
         }
-        let renderAction = event => {
-          // if (!renderBox.renderRowHeight) renderBox.renderRowHeight = renderBox.renderChilds.length ? renderBox.scrollHeight / renderBox.renderChilds.length : 30
-          // console.info('>> #', renderBox.scrollHeight, renderBox.renderChilds.length, renderBox.scrollHeight / renderBox.renderChilds.length)
-          // console.info('>> ^', render.box, renderBox.renderChilds)
-          // $.timer('渲染').trace('开始计算')
-          let makeList = []
-          for (let i = 0; i < renderBox.renderChilds.length; i++) {
-            let rowNode = renderBox.renderChilds[i]
-            if (rowNode.offsetTop >= renderBox.scrollTop - renderBox.clientHeight) {
-              if (!rowNode.renderMade) {
-                rowNode.renderMade = true
-                makeList.push(rowNode)
-              }
-            }
-            if (rowNode.offsetTop >= renderBox.scrollTop + renderBox.clientHeight * 2) {
-              // console.info(' >> $', i, rowNode.offsetTop, '>=', renderBox.scrollTop + renderBox.clientHeight * 2, '|', renderBox.scrollTop, '+', renderBox.clientHeight, '* 2')
-              break
-            }
-          }
-          // $.timer('渲染').trace('开始生成'+makeList.length)
-          if (makeList.length > 0) {
-            // _make(makeList, datas, level + 1, dataFields, thisArg, {})
-            // console.info(makeList)
-            let eventNodes = []
-            for (let rowNode of makeList) {
-              if (rowNode.data) {
-                for (let k in rowNode.data) {
-                  datas[k] = rowNode.data[k]
-                }
-              }
-              // console.info(rowNode, datas, thisArg)
-              refresh(rowNode, datas, thisArg)
-              rowNode.style.visibility = 'visible'
-              // console.info('  >> visible', rowNode)
-              if (renderBox.renderRowEvent) {
-                eventNodes.push(...$.all('[events]', rowNode))
-              }
-            }
-            // console.info(3333, renderBox.renderRowEventTarget, thisArg)
-            if (eventNodes.length > 0) {
-              makeEvents(eventNodes, renderBox.renderRowEventTarget)
-            }
-          }
-          // $.timer('渲染').trace('完成')
-          // console.info(event)
-          // console.info(renderBox.renderChilds.length, event.currentTarget.scrollTop, event.currentTarget.clientHeight)
-          // TODO 根据滚轮滚动对数据进行重新定位和渲染
-        }
+
+        // let renderAction = event => {
+        //   // if (!renderBox.renderRowHeight) renderBox.renderRowHeight = renderBox.renderChilds.length ? renderBox.scrollHeight / renderBox.renderChilds.length : 30
+        //   // console.info('>> #', renderBox.scrollHeight, renderBox.renderChilds.length, renderBox.scrollHeight / renderBox.renderChilds.length)
+        //   // console.info('>> ^', render.box, renderBox.renderChilds)
+        //   // $.timer('渲染').trace('开始计算')
+        //   // let t1 = new Date().getTime()
+        //   if (this.renderTID !== 0) clearTimeout(this.renderTID)
+        //   this.renderTID = setTimeout(() => {
+        //     this.renderTID = 0
+        //
+        //     let makeList = []
+        //     for (let i = 0; i < renderBox.renderChilds.length; i++) {
+        //       let rowNode = renderBox.renderChilds[i]
+        //       if (rowNode.offsetTop >= renderBox.scrollTop - renderBox.clientHeight) {
+        //         if (!rowNode.renderMade) {
+        //           rowNode.renderMade = true
+        //           makeList.push(rowNode)
+        //         }
+        //       }
+        //       if (rowNode.offsetTop >= renderBox.scrollTop + renderBox.clientHeight * 2) {
+        //         // console.info(' >> $', i, rowNode.offsetTop, '>=', renderBox.scrollTop + renderBox.clientHeight * 2, '|', renderBox.scrollTop, '+', renderBox.clientHeight, '* 2')
+        //         break
+        //       }
+        //     }
+        //     // console.info(makeList.length)
+        //     // let t2 = new Date().getTime()
+        //     // console.info('    >>>>>>>>>>>>>>>>====------------>2', t2 - t1)
+        //
+        //     // $.timer('渲染').trace('开始生成'+makeList.length)
+        //     // let t9 = 0
+        //     // let t9c = 0
+        //     if (makeList.length > 0) {
+        //       // _make(makeList, datas, level + 1, dataFields, thisArg, {})
+        //       // console.info(makeList)
+        //       let eventNodes = []
+        //       for (let rowNode of makeList) {
+        //         if (rowNode.data) {
+        //           for (let k in rowNode.data) {
+        //             datas[k] = rowNode.data[k]
+        //           }
+        //         }
+        //         // console.info(rowNode, datas, thisArg)
+        //         // let tt1 = new Date().getTime()
+        //         setTimeout(() => {
+        //           refresh(rowNode, datas, thisArg)
+        //           rowNode.style.visibility = 'visible'
+        //         })
+        //         // let tt2 = new Date().getTime()
+        //         // t9 += tt2 - tt1
+        //         // t9c++
+        //         // console.info('  >> visible', rowNode)
+        //       }
+        //       // console.info(3333, renderBox.renderRowEventTarget, thisArg)
+        //       setTimeout(() => {
+        //         for (let rowNode of makeList) {
+        //           if (renderBox.renderRowEvent) {
+        //             eventNodes.push(...$.all('[events]', rowNode))
+        //           }
+        //         }
+        //         if (eventNodes.length > 0) {
+        //           makeEvents(eventNodes, renderBox.renderRowEventTarget)
+        //         }
+        //       })
+        //     }
+        //     // let t3 = new Date().getTime()
+        //     // console.info('    >>>>>>>>>>>>>>>>====------------>3', t3 - t2, t9c, t9)
+        //
+        //     // $.timer('渲染').trace('完成')
+        //     // console.info(event)
+        //     // console.info(renderBox.renderChilds.length, event.currentTarget.scrollTop, event.currentTarget.clientHeight)
+        //     // TODO 根据滚轮滚动对数据进行重新定位和渲染
+        //   }, 100)
+        //
+        // }
         renderBox.renderAction = renderAction
+        renderBox.datas = datas
+        renderBox.thisArg = thisArg
         renderBox.addEventListener('scroll', renderAction)
+        // let t1 = new Date().getTime()
         setTimeout(() => {
+          // let t2 = new Date().getTime()
+          // console.info('    ====------------>2', t2 - t1)
           // renderAction({ currentTarget: renderBox })
-          renderAction()
+          renderBox.renderAction()
+          // let t3 = new Date().getTime()
+          // console.info('    ====------------>3', t3 - t2)
         })
       }
     }
@@ -377,7 +538,7 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
       if (node.attributes && node.attributes.bind) {
         let bindVar = node.attributes.bind.value
         node.bindVar = bindVar
-        node.binds = bindVar.split('.')
+        node.binds = splitVar(bindVar)
 
         switch (node.tagName) {
           case 'INPUT':
@@ -463,7 +624,7 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
       if (bindVar.indexOf('[') !== -1) {
         // 处理有数组的情况
         node.binds = []
-        for (let k of bindVar.split('.')) {
+        for (let k of splitVar(bindVar)) {
           if (k.endsWith(']') && k.indexOf('[') !== -1) {
             let a = k.split('[', 2)
             k = a[0]
@@ -475,7 +636,7 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
           }
         }
       } else {
-        node.binds = bindVar.split('.')
+        node.binds = splitVar(bindVar)
       }
 
       // if(node.bindVar.indexOf('{')!==-1)console.info(node.bindVar, bindVar)
@@ -669,7 +830,7 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
     if (node['ifs']) {
       // let ifs = node['ifs']
       // let ifs = makePreVars(node['ifs'], datas, true)
-      let ifs = makePreVars(node['ifs'], datas, true, thisArg)
+      let ifs = makePreVars(node['ifs'], datas, false, thisArg)
       // if (node['ifs'].indexOf('依赖') !== -1) console.info(node['ifs'], ifs)
       // .startsWith('{') ? makeString(node['ifs'], datas) : node['ifs']
       // if (ifs.indexOf('{') !== -1) {
@@ -734,7 +895,9 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
         // if (eachVars.length > 1) console.info(111, eachVars)
         let itemsData = []
         for (let eachVar of eachVars) {
+          let s1 = eachVar
           eachVar = makePreVars(eachVar, datas, false, thisArg)
+          // if(s1.indexOf('[argName]')!==-1) console.info(s1, '>>', eachVar)
           // if (eachVar.indexOf('[') !== -1) {
           //   // 预处理循环中的动态变量
           //   eachVar = eachVar.replace(/\[.*?]/g, word => {
@@ -749,7 +912,7 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
           //   })
           // }
 
-          let findArr = eachVar.split('.')
+          let findArr = splitVar(eachVar)
           let findData = datas
           for (let itemsA of findArr) {
             findData = findData[itemsA]
@@ -828,6 +991,7 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
           //
           // } else {
           // 处理数据
+          // let laterMakes = [] // TODO 是否必要在这里预先生成30条，剩下的延后生成？或者能够复用组件？
           for (let index in itemsData) {
             let dom = document.createElement(node.parentTagName || 'div')
             dom.innerHTML = node.htmlTpl
@@ -836,25 +1000,26 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
             let newDataFields = $.copy(dataFields)
             newDataFields.push(node.eachs.index)
             newDataFields.push(node.eachs.item)
+            // 设置 data
+            let newDomData = {}
+            for (let df of newDataFields) {
+              newDomData[df] = datas[df]
+            }
+
+            // 处理节点
+            // if(isRenderRow && index > 30){
+            //   laterMakes.push([dom, datas, level + 1, newDataFields, thisArg, render])
+            // }else{
             _make(dom, datas, level + 1, newDataFields, thisArg, render)
             let newDom = dom.firstChild
             newDom.isTplMaked = true
             node.parentElement.insertBefore(newDom, node)
-
-            // 设置 data
-            let newDomData = {}
-            for (let df of newDataFields) {
-              // console.info(111, df, datas[df])
-              newDomData[df] = datas[df]
-            }
             newDom.data = newDomData
-            // console.info('  222', newDomData, newDom.data)
-
-            // _make(node.previousSibling, datas)
             if (isRenderRow) {
-              // console.info('~~~', index, newDom)
               render.box.renderChilds.push(newDom)
             }
+            // }
+
           }
           // if (isRenderRow) {
           //   render.box.renderRowCount = itemsData.length
@@ -887,17 +1052,18 @@ function _make (nodes, datas, level, dataFields, thisArg, render) {
 }
 
 function makePreVars (str, datas, isBool, thisArg) {
-  // let str1 = str
+  let str1 = str
   // if (str1.indexOf('+') !== -1) console.info('  makePreVars', str, datas)
-  // if (str1.indexOf('{!data.currentRow.innerId?') !== -1) console.info('  makePreVars1', str, isBool, datas)
+  // if (str1.indexOf('!item.if') !== -1) console.info('  makePreVars1', str, isBool, $.json(datas.item, 2))
   if (str.indexOf('{') !== -1) {
     // 预处理循环中的动态变量
     str = str.replace(/\{[^{]+?}/g, word => {
       let r = makeString(word, datas, thisArg) || ''
+      // if (str1.indexOf('!item.if') !== -1) console.info('    >>', word, r, r && r !== 'false' && r !== '0' && r !== 'undefined' && r !== 'null' ? 'true' : 'false')
       return !isBool ? r : r && r !== 'false' && r !== '0' && r !== 'undefined' && r !== 'null' ? 'true' : 'false'
     })
   }
-  // if (str1.indexOf('{!data.currentRow.innerId?') !== -1) console.info('  makePreVars2', str, datas)
+  // if (str1.indexOf('!item.if') !== -1) console.info('  makePreVars2', str)
 
   if (str.indexOf('[') !== -1) {
     // 预处理循环中的动态变量
@@ -911,17 +1077,21 @@ function makePreVars (str, datas, isBool, thisArg) {
         // console.info(111, word)
         return word
       }
-      if (/^[\-+]?[0-9]\d*$/.test(r)) {
+      // if (/^[\-+]?[0-9]\d*$/.test(r)) {
+      if (/^[a-zA-Z]/.test(r)) {
         // if (str1.indexOf('+') !== -1) console.info(444,str)
         // console.info(222, '[' + r + ']')
         // return '[' + r + ']'
         return '.' + r  // 数字也可以用这种方式
+      } else if (/^[0-9]\d*$/.test(r)) {
+        return '[' + r + ']'
       }
-      // if (str1.indexOf('+') !== -1) console.info(555,str)
+      // if (str1.indexOf("!='table'") !== -1) console.info(555,str)
       // console.info(333, '.' + r)
-      return '.' + r
+      return '[\'' + r + '\']'
     })
   }
+  // if (str1.indexOf("!='table'") !== -1) console.info('  makePreVars3', str)
 
   if (str.indexOf('{') !== -1) {
     // 预处理循环中的动态变量
@@ -930,6 +1100,7 @@ function makePreVars (str, datas, isBool, thisArg) {
       return !isBool ? r : r && r !== 'false' && r !== '0' && r !== 'undefined' && r !== 'null' ? 'true' : 'false'
     })
   }
+  // if (str1.indexOf('!item.if') !== -1) console.info('  makePreVars4', str)
 
   if (str.indexOf('[') !== -1) {
     // 预处理循环中的动态变量
@@ -940,14 +1111,19 @@ function makePreVars (str, datas, isBool, thisArg) {
         // console.info(' == 0', word)
         return word
       }
-      if (/^[\-+]?[1-9]\d*$/.test(r)) {
+      // if (/^[\-+]?[1-9]\d*$/.test(r)) {
+      if (/^[a-zA-Z]/.test(r)) {
         // console.info(' == 1', '[' + r + ']')
+        return '[' + r + ']'
+      } else if (/^[0-9]\d*$/.test(r)) {
         return '[' + r + ']'
       }
       // console.info(' == 2', '[' + r + ']')
-      return '.' + r
+      return '[\'' + r + '\']'
     })
   }
+  // if (str1.indexOf('!item.if') !== -1) console.info('  makePreVars5', str)
+  // if (str1.indexOf('!item.if') !== -1) console.info('')
 
   // if (str1.indexOf('field.key') !== -1) console.info('  >> makePreVars', str1, '=>', str)
   return str

@@ -67,7 +67,9 @@ $.clear = node => {
 }
 
 $.show = (id, from) => {
+  if (!id) return
   $.all(id, node => {
+    if (!node) return
     let display = node.getAttribute('display') || 'block'
     if (display === 'visibility') {
       node.style.visibility = 'visible'
@@ -80,7 +82,9 @@ $.show = (id, from) => {
 }
 
 $.hide = (id, from) => {
+  if (!id) return
   $.all(id, node => {
+    if (!node) return
     let display = node.getAttribute('display') || 'block'
     if (display === 'visibility') {
       node.style.visibility = 'hidden'
@@ -100,9 +104,11 @@ $.childs = (id, from) => {
 
 $.hasClass = (id, className, from) => {
   for (let node of $.childs(id, from)) {
-    let a = node.className.split(/\s+/)
-    if (a.indexOf(className) !== -1) {
-      return true
+    if (node.className && node.className.split) {
+      let a = node.className.split(/\s+/)
+      if (a.indexOf(className) !== -1) {
+        return true
+      }
     }
   }
   return false
@@ -110,13 +116,15 @@ $.hasClass = (id, className, from) => {
 
 $.addClass = (id, classNames, from) => {
   for (let node of $.childs(id, from)) {
-    let a = node.className.split(/\s+/)
-    for (let className of classNames.split(' ')) {
-      if (a.indexOf(className) === -1) {
-        a.push(className)
+    if (node.className !== undefined && node.className.split) {
+      let a = node.className.split(/\s+/)
+      for (let className of classNames.split(' ')) {
+        if (a.indexOf(className) === -1) {
+          a.push(className)
+        }
       }
+      node.className = a.join(' ')
     }
-    node.className = a.join(' ')
   }
 }
 
@@ -132,27 +140,31 @@ $.addClassAutoRemove = (id, className, from, delay) => {
 
 $.removeClass = (id, classNames, from) => {
   for (let node of $.childs(id, from)) {
-    let a = node.className.split(/\s+/)
-    for (let className of classNames.split(' ')) {
-      let pos = a.indexOf(className)
-      if (pos !== -1) {
-        a.splice(pos, 1)
+    if (node.className !== undefined && node.className.split) {
+      let a = node.className.split(/\s+/)
+      for (let className of classNames.split(' ')) {
+        let pos = a.indexOf(className)
+        if (pos !== -1) {
+          a.splice(pos, 1)
+        }
       }
+      node.className = a.join(' ')
     }
-    node.className = a.join(' ')
   }
 }
 
 $.toggleClass = (id, className, from) => {
   for (let node of $.childs(id, from)) {
-    let a = node.className.split(/\s+/)
-    let pos = a.indexOf(className)
-    if (pos !== -1) {
-      a.splice(pos, 1)
-      node.className = a.join(' ')
-    } else {
-      a.push(className)
-      node.className = a.join(' ')
+    if (node.className !== undefined && node.className.split) {
+      let a = node.className.split(/\s+/)
+      let pos = a.indexOf(className)
+      if (pos !== -1) {
+        a.splice(pos, 1)
+        node.className = a.join(' ')
+      } else {
+        a.push(className)
+        node.className = a.join(' ')
+      }
     }
   }
 }
@@ -239,6 +251,13 @@ $.removeArrayItem = (list, item) => {
   if (pos !== -1) list.splice(pos, 1)
 }
 
+$.last = (arr) => {
+  if (arr && arr.length) {
+    return arr[arr.length - 1]
+  }
+  return null
+}
+
 $.len = (obj) => {
   if (obj instanceof Array) {
     return obj.length
@@ -306,14 +325,14 @@ $.copy = (obj) => {
   if (obj instanceof Array) {
     newObj = []
     for (let o of obj) {
-      if (typeof o === 'object') o = $.copy(o)
+      if (typeof o === 'object' && o) o = $.copy(o)
       newObj.push(o)
     }
   } else {
     newObj = {}
     for (let k in obj) {
       let v = obj[k]
-      if (typeof v === 'object') v = $.copy(v)
+      if (typeof v === 'object' && v) v = $.copy(v)
       newObj[k] = v
     }
   }
@@ -385,6 +404,11 @@ $.formatDate = function (date, fmt, timezone) {
 
 $.parseDate = function (str) {
   // 2006-01-02 15:03:04
+  if (typeof str === 'number') str = str + ''
+  if (/^\d+[\\.]?\d*$/.test(str)) {
+    if (str.length === 10) str += '000'
+    return new Date($.int(str))
+  }
   if (str.length === 19) {
     return new Date(parseInt(str.substr(0, 4)), parseInt(str.substr(5, 2)) - 1, parseInt(str.substr(8, 2)), parseInt(str.substr(11, 2)), parseInt(str.substr(14, 2)), parseInt(str.substr(17, 2)))
   } else if (str.length === 10) {
@@ -398,6 +422,7 @@ $.parseDate = function (str) {
     let date = new Date()
     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), parseInt(str.substr(0, 2)), parseInt(str.substr(3, 2)), 0)
   }
+  return new Date(str)
 }
 
 $.offsetPosition = (node, excludeSelf) => {
@@ -418,15 +443,19 @@ $.fixedPosition = (node, excludeSelf) => {
   let x = 0
   let y = 0
   if (excludeSelf) node = node.offsetParent
-  while (node && node !== document.body) {
-    if (node.scrollTop) y -= node.scrollTop
-    if (node.scrollLeft) x -= node.scrollLeft
-    let position = getComputedStyle(node).position
-    // console.info(991, position, node.scrollTop, node.offsetTop)
-    x += node.offsetLeft
-    y += node.offsetTop
-    // console.info(992, node.scrollTop, node.offsetTop)
-    node = node.offsetParent
+  let node1 = node
+  while (node1 && node1 !== document.body) {
+    x += node1.offsetLeft
+    y += node1.offsetTop
+    // console.info(992, node1.scrollTop, node1.offsetTop)
+    node1 = node1.offsetParent
+  }
+  node1 = node
+  while (node1 && node1 !== document.body) {
+    if (node1.scrollTop) y -= node1.scrollTop
+    if (node1.scrollLeft) x -= node1.scrollLeft
+    // console.info(992, node1.scrollTop, node1.offsetTop)
+    node1 = node1.parentNode
   }
   // console.info(999, x, y)
   return { x, y }
@@ -527,9 +556,9 @@ $.copyToClipBoard = function (content) {
   document.body.removeChild(dom)
 }
 
-$.json = function (value) {
+$.json = function (value, space) {
   try {
-    return JSON.stringify(value)
+    return JSON.stringify(value, null, space)
   } catch (err) {
     return value
   }
@@ -566,6 +595,15 @@ $.storage = {
       }
     } else {
       localStorage[storagePrefix + key] = $.json(value) || ''
+    }
+  },
+  remove: function (key) {
+    if (typeof key !== 'string') {
+      for (let k in key) {
+        localStorage.removeItem(storagePrefix + k)
+      }
+    } else {
+      localStorage.removeItem(storagePrefix + key)
     }
   },
 }
@@ -668,22 +706,39 @@ $.findDomByTagName = function (target, tagName, parent) {
   return ''
 }
 
-$.int = function (input) {
-  if (input instanceof Number) return input
+$.int = function (v) {
+  if (!v) return 0
+  if (typeof v === 'number' || v instanceof Number) return v
+  if (typeof v === 'object') v = v.toString ? v.toString() : ''
+  if (typeof v !== 'string') return 0
   try {
-    return parseInt(input)
-  } catch (err) {
+    return Math.round(parseFloat(v.replace(/,/g, '').trim())) || 0
+  } catch (e) {
     return 0
   }
 }
 
-$.float = function (input) {
-  if (input instanceof Number) return input
+$.float = function (v) {
+  if (!v) return 0.0
+  if (typeof v === 'number' || v instanceof Number) return v
+  if (typeof v === 'object') v = v.toString ? v.toString() : ''
+  if (typeof v !== 'string') return 0.0
   try {
-    return parseFloat(input)
-  } catch (err) {
+    return parseFloat(v.replace(/,/g, '').trim()) || 0.0
+  } catch (e) {
     return 0.0
   }
+}
+
+$.str = function (v) {
+  if (!v) return ''
+  if (typeof v === 'string') return v
+  if (v.toString) return v.toString()
+  return ''
+}
+
+$.trim = function (v) {
+  return $.str(v).trim()
 }
 
 let timers = {}
@@ -697,11 +752,11 @@ $.timer = function (name, isNew) {
       let totalDuration = lastTime - this.startTime
       let lastDuration = this.lastTime ? lastTime - this.lastTime : totalDuration
       this.lastTime = lastTime
-      console.info('###', this.name, name, lastTime, lastDuration, totalDuration)
+      console.info('###', this.name, name, lastDuration, '/', totalDuration)
     },
   }
   timers[name] = timer
-  console.info('###', name, timer.startTime)
+  console.info('###', name, 0)
   return timer
 }
 
